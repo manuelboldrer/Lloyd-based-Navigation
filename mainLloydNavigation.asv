@@ -1,18 +1,11 @@
-%/*-----------------------------------------------------
-%|      Manuel Boldrer, PhD                            |
-%|      Department of Cognitive Robotics               |
-%|      Delft University of Technology                 |
-%|                                                     |
-%|      email: m.boldrer@tudelft.nl                    |
-%|      https://manuelboldrer.github.io/               |                                                   
-%-----------------------------------------------------*/
-%The algorithms implemented in this code were used to generate
-%part of the simulation results in the following paper:
 
-%[1] Boldrer, M., Palopoli, L., & Fontanelli, D. (2020, October). 
-% Lloyd-based Approach for Robots Navigation in Human-shared environments. 
-% In 2020 IEEE/RSJ International Conference on Intelligent Robots and
-% Systems.
+
+
+
+
+
+
+
 
 
 close all force
@@ -21,22 +14,22 @@ clearvars
 
 
 %% Parameters
-sizeA           = 1;          % robot size
-dx              = 0.075;      % space discretization
-tend            = 200 ;       % ending time of simulation
-n_agents        = 10 ;         % number of robots
-dt              = .033 ;      % time discretization
-time            = 0:dt:tend;  % time vector
-Rmax            = 1.5*sizeA ; % sensing radius
+sizeA           = 3;       % robot size
+dx              = 0.075;   % space discretization
+tend            = 200 ;    % ending time of simulation
+n_agents        = 3 ;      % number of robots
+dt              = .033 ;   % time discretization
+time            = 0:dt:tend; %time vector
+Rmax            = 1.5*sizeA ; %sensing radius
 xlim            = [0 30] ;
 ylim            = [0 30] ;
 bbox            = [xlim(1),ylim(1);xlim(1),ylim(2);xlim(2),ylim(2);xlim(2),ylim(1)];
-obs             = [];   % IDs of dynamic obstacles
-n_obsD          = length(obs)  ; % number of dynamic obstacles
-sizeO           = .5;            % dynamic obstacle dimension
-R0              = 0.2 ;          % rho value (density function parameter)
+obs             = [1 2 3 4 5]; %IDs of dynamic obstacles
+n_obsD          = length(obs)  ; %number of dynamic obstacles
+sizeO           = .5; % dynamic obstacle dimension
+R0              = 0.2 ; %rho value (density function parameter)
 b               = 0.2;
-n_wp            = 1;             % number of waypoints
+n_wp            = 1;
 
 %% Initialize variables
 x               = zeros(length(time),n_agents);
@@ -52,14 +45,14 @@ YY1             = cell(length(time)-1,n_agents);
 x_obs_dyna      = zeros(length(time),n_obsD);
 y_obs_dyna      = zeros(length(time),n_obsD);
 VobsD           = zeros(length(time),n_obsD,2);
-vel             = zeros(length(time)-1,n_agents);      % control v (linear velocity)
-omega           = zeros(length(time)-1,n_agents);      % control omega (angular velocity)
-x_dot           = zeros(length(time),n_agents);        % derivative of x
-y_dot           = zeros(length(time),n_agents);        % derivative of y
-theta_dot       = zeros(length(time),n_agents);        % derivative of theta
+vel             = zeros(length(time)-1,n_agents);      %control v (linear velocity)
+omega           = zeros(length(time)-1,n_agents);      %control omega (angular velocity)
+x_dot           = zeros(length(time),n_agents);        %derivative of x
+y_dot           = zeros(length(time),n_agents);        %derivative of y
+theta_dot       = zeros(length(time),n_agents);        %derivative of theta
 
-hh              = zeros(2,length(time),n_agents);      % heading of vehicle
-hd              = zeros(2,length(time),n_agents);      % desired heading
+hh              = zeros(2,length(time),n_agents);      %heading of vehicle
+hd              = zeros(2,length(time),n_agents);    
 goal            = zeros(n_agents,2,n_wp);
 Wp              = cell(n_agents,1);
 
@@ -67,13 +60,13 @@ Wp              = cell(n_agents,1);
 
 
 
-flag_obs        = 2; %change static obstacle configutation  
-video_flag      = 0; %to generate video
-nonholo_flag    = 0; %activate nonholonomic constraints
+flag_obs        = 2;
+video_flag      = 0;
+nonholo_flag    = 0;
 
-manual_ics      = 1 ; % initial conditions
-manual_goal     = 1 ; % waypoint 
-planning_flag   = 1 ; % planner
+manual_ics      =1 ;
+manual_goal     = 1 ;
+planning_flag   = 1 ;
 
 %% Obstacle definition
 switch flag_obs
@@ -222,15 +215,15 @@ for kk = 1:length(time)-1
     end
     %% Dynamic obstacle
 
-    VobsD(kk,1,1)            = 0;
-    VobsD(kk,1,2)            = 0;
-    VobsD(kk,2,1)            = 0;
-    VobsD(kk,2,2)            = 0;
-    VobsD(kk,3,1)            = 0;
+    VobsD(kk,1,1)            = 0.     ;
+    VobsD(kk,1,2)            = -0 ;
+    VobsD(kk,2,1)            = 0     ;
+    VobsD(kk,2,2)            = -0;
+    VobsD(kk,3,1)            = -0.0;
     VobsD(kk,3,2)            = 0;
-    VobsD(kk,4,1)            = 0;
+    VobsD(kk,4,1)            = -0.0;
     VobsD(kk,4,2)            = 0;
-        VobsD(kk,5,1)        = 0;
+        VobsD(kk,5,1)            = -0.0;
     VobsD(kk,5,2)            = 0;
     
     x_obs_dyna(1,1)          = 15     ;
@@ -395,7 +388,7 @@ for kk = 1:3:length(time)-1
     end
     for j = [1:n_agents]
         if nonholo_flag == 0
-%             drones(j,:)    = plot_drone(x(kk,j),y(kk,j),sizeA,Rmax);
+            drones(j,:)    = plot_drone(x(kk,j),y(kk,j),sizeA,Rmax);
         else
             plot_obj(j,:)  = plot_unicycle(x(kk,j), y(kk,j), theta(kk,j), 'k', sizeA);
         end
@@ -444,5 +437,5 @@ if video_flag == 1
     writeVideo(video,F(1:864))
     close(video)
 end
-
+%%
 
