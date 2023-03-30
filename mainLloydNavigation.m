@@ -24,7 +24,7 @@ clearvars
 sizeA           = 1;          % robot size
 dx              = 0.075;      % space discretization
 tend            = 200 ;       % ending time of simulation
-n_agents        = 10 ;         % number of robots
+n_agents        = 2 ;         % number of robots
 dt              = .033 ;      % time discretization
 time            = 0:dt:tend;  % time vector
 Rmax            = 1.5*sizeA ; % sensing radius
@@ -71,9 +71,9 @@ flag_obs        = 2; %change static obstacle configutation
 video_flag      = 0; %to generate video
 nonholo_flag    = 0;
 
-manual_ics      = 0 ; % initial conditions
-manual_goal     = 0 ; % waypoint
-planning_flag   = 0 ; % planner
+manual_ics      =0 ; % initial conditions
+manual_goal     =0 ; % waypoint
+planning_flag   =0 ; % planner
 
 %% Obstacle definition
 switch flag_obs
@@ -89,6 +89,10 @@ switch flag_obs
         x_obs        = [0.1,10,10];
         y_obs        = [20,10,0];
         obstacle_dim = [20,5;20,5;3,5];
+    case 3
+        x_obs        = [2.5,12.5,22.5];
+        y_obs        = [4.9,0.1,4.9];
+        obstacle_dim = [5,25;5,25;5,25];
 end
 
 obstacle  = zeros(length(x_obs),4);
@@ -214,30 +218,15 @@ for kk = 1:length(time)-1
             R(kk,j) = R0;
         end
     end
-    %% Dynamic obstacle
+    %% Dynamic obstacles
+for p =1 : n_obsD
+    x_obs_dyna(1,p)          = 30*rand;
+    y_obs_dyna(1,p)          = 30*rand;
+end
 
-    VobsD(kk,1,1)            = 0;
-    VobsD(kk,1,2)            = 0;
-    VobsD(kk,2,1)            = 0;
-    VobsD(kk,2,2)            = 0;
-    VobsD(kk,3,1)            = 0;
-    VobsD(kk,3,2)            = 0;
-    VobsD(kk,4,1)            = 0;
-    VobsD(kk,4,2)            = 0;
-    VobsD(kk,5,1)            = 0;
-    VobsD(kk,5,2)            = 0;
-    x_obs_dyna(1,1)          = 15;
-    y_obs_dyna(1,1)          = 18;
-    x_obs_dyna(1,2)          = 5;
-    y_obs_dyna(1,2)          = 10;
-    x_obs_dyna(1,3)          = 15;
-    y_obs_dyna(1,3)          = 17;
-    x_obs_dyna(1,4)          = 24;
-    y_obs_dyna(1,4)          = 20;
-    x_obs_dyna(1,5)          = 25;
-    y_obs_dyna(1,5)          = 21;
-    %
     for q = 1:n_obsD
+        VobsD(kk,q,1) = VX(kk,q)/2;
+        VobsD(kk,q,2) = VY(kk,q)/2;
         x_obs_dyna(kk+1,q) =  x_obs_dyna(kk,q) + dt*VobsD(kk,q,1);
         y_obs_dyna(kk+1,q) =  y_obs_dyna(kk,q) + dt*VobsD(kk,q,2);
     end
@@ -248,7 +237,8 @@ for kk = 1:length(time)-1
         obstacleD(kk,qq,:) =  [x_obs_dyna(kk,qq),y_obs_dyna(kk,qq),sizeO,sizeO];
     end
     [v{kk},c{kk}] = VoronoiBounded([x(kk,:)';x_obs_dyna(kk,:)'],[y(kk,:)';y_obs_dyna(kk,:)'], bbox);
-    %% Distributed Control (for now is complete disjont from the estimation)
+
+    %% Distributed Control 
     for j = 1:n_agents %calculate the centroid of each cell
         obstacle1 = [obstacle];
         obstacle2   = [obstacle1(:,1),obstacle1(:,2),obstacle1(:,3),obstacle1(:,4)];
@@ -277,21 +267,13 @@ for kk = 1:length(time)-1
             x(kk+1,j)  = x(kk,j)     + x_dot(kk,j)*dt ;
             y(kk+1,j)  = y(kk,j)     + y_dot(kk,j)*dt ;
         else %active nonholonomic constraints
-            %         if kk>1
-            %             x_dot(kk,j)     = vel(kk-1,j) * cos(theta(kk-1,j)) ;
-            %             y_dot(kk,j)     = vel(kk-1,j) * sin(theta(kk-1,j)) ;
-            %             theta_dot(kk,j) = omega(kk-1,j);
-            %         end
             %% Controller
             hd(:,kk,j)     = [cx(kk,j)-x(kk,j)' cy(kk,j)-y(kk,j)]/norm([cx(kk,j)-x(kk,j) cy(kk,j)-y(kk,j)]);
             hh(:,kk,j)     = [cos(theta(kk,j)) ; sin(theta(kk,j))];
-
-
             if kk >1
                 [vel(kk,:),omega(kk,:)] = controller(theta(kk,:),  hd(:,kk,:), vel(kk-1,:), dt);
             end
             for j = 1:n_agents
-
                 if norm([x(kk,j),y(kk,j)]-[goal(j,1),goal(j,2)]) < .2
                     omega(kk,j) = 0;
                 end
@@ -308,9 +290,9 @@ for kk = 1:length(time)-1
 
 end
 close(h_waitbar);
+
 %% Post-processing
 video_flag=1;
-
 obstacles            = zeros(length(x_obs),4);
 drones               = gobjects(n_agents,9); % initialize array of plots
 plot_obj             = gobjects(n_agents,7); % initialize array of plots
@@ -337,14 +319,9 @@ obstacleX   = [obstacle1(:,1)-epsiX,obstacle1(:,2)-epsiX,obstacle1(:,3)+2*epsiX,
 for j = 1:length(x_obs)
     rect(j)                 = rectangle('Position',obstacleX(j,:),'FaceColor',[.8 .8 .8],'EdgeColor',[.7 .7 .7]);
 end
-for kk = 1:3:length(time)-1
-
-
-
+for kk = 1:1:length(time)-1
     for w = 1:n_obsD
         rectD(w,:) = human(obstacleD(kk,w,1),obstacleD(kk,w,2),VobsD(kk,w,1),VobsD(kk,w,2),sizeO);
-
-
     end
     for j = [1:n_agents]
         if nonholo_flag == 0
@@ -357,10 +334,8 @@ for kk = 1:3:length(time)-1
         verCellHandle(kk,j)  = patch(x(kk,j),y(kk,j),[1 1 1],'FaceAlpha',.1,'EdgeColor',DodgerBlue); % use color i  -- no robot assigned yet
         set(verCellHandle(kk,j), 'XData',XX1{kk,j}(bound),'YData',YY1{kk,j}(bound));
         centr(kk,j)             = plot(cx(kk,j),cy(kk,j),'bx');
-
         circ1(j)     = circle(x(kk,j),y(kk,j),.35*sizeA,DarkOrange);
         wpplot(j)    = plot(wp_input_vec(1,kk,j),wp_input_vec(2,kk,j),'rx');
-
     end
 
     if video_flag == 1

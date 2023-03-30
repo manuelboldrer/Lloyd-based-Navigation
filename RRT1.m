@@ -9,8 +9,8 @@ for j = 1:length(x_obs)
 obstacle(j,:)  = [x_obs(j),y_obs(j),obstacle_dim(j,1),obstacle_dim(j,2)];
 end
 
-EPS = 0.5;%0.5;
-numNodes = 1500;%1500;
+EPS = 3;%0.5;
+numNodes = 2000;%1500;
 q_start.coord = zeros(2,1);
 q_start.coord(1) = x;
 q_start.coord(2) = y;

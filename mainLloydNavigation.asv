@@ -4,13 +4,13 @@
 %|      Delft University of Technology                 |
 %|                                                     |
 %|      email: m.boldrer@tudelft.nl                    |
-%|      https://manuelboldrer.github.io/               |                                                   
+%|      https://manuelboldrer.github.io/               |
 %-----------------------------------------------------*/
 %The algorithms implemented in this code were used to generate
 %part of the simulation results in the following paper:
 
-%[1] Boldrer, M., Palopoli, L., & Fontanelli, D. (2020, October). 
-% Lloyd-based Approach for Robots Navigation in Human-shared environments. 
+%[1] Boldrer, M., Palopoli, L., & Fontanelli, D. (2020, October).
+% Lloyd-based Approach for Robots Navigation in Human-shared environments.
 % In 2020 IEEE/RSJ International Conference on Intelligent Robots and
 % Systems.
 
@@ -24,7 +24,7 @@ clearvars
 sizeA           = 1;          % robot size
 dx              = 0.075;      % space discretization
 tend            = 200 ;       % ending time of simulation
-n_agents        = 10 ;         % number of robots
+n_agents        = 2 ;         % number of robots
 dt              = .033 ;      % time discretization
 time            = 0:dt:tend;  % time vector
 Rmax            = 1.5*sizeA ; % sensing radius
@@ -67,13 +67,13 @@ Wp              = cell(n_agents,1);
 
 
 
-flag_obs        = 2; %change static obstacle configutation  
+flag_obs        = 2; %change static obstacle configutation
 video_flag      = 0; %to generate video
-nonholo_flag    = 0; %activate nonholonomic constraints
+nonholo_flag    = 0;
 
-manual_ics      = 1 ; % initial conditions
-manual_goal     = 1 ; % waypoint 
-planning_flag   = 1 ; % planner
+manual_ics      =0 ; % initial conditions
+manual_goal     =0 ; % waypoint
+planning_flag   =0 ; % planner
 
 %% Obstacle definition
 switch flag_obs
@@ -88,7 +88,11 @@ switch flag_obs
     case 2
         x_obs        = [0.1,10,10];
         y_obs        = [20,10,0];
-        obstacle_dim = [20,5;20,5;3,5];        
+        obstacle_dim = [20,5;20,5;3,5];
+    case 3
+        x_obs        = [2.5,12.5,22.5];
+        y_obs        = [4.9,0.1,4.9];
+        obstacle_dim = [5,25;5,25;5,25];
 end
 
 obstacle  = zeros(length(x_obs),4);
@@ -116,7 +120,7 @@ if manual_ics == 1
     for j = 1:length(x_obs)
         rectangle('Position',obstacles(j,:),'FaceColor',[.8 .8 .8],'EdgeColor',[.7 .7 .7]);
     end
-    
+
     for i = 1:n_agents
         display(['insert vehicle position of agent ', num2str(i)]);
         tmp    = ginput(1);
@@ -139,7 +143,7 @@ else
     load('x_1');
     load('y_1');
     load('theta_1');
-    
+
     x(1,:)     = x_1;
     y(1,:)     = y_1;
     theta(1,:) = theta_1;
@@ -147,7 +151,7 @@ end
 %% Define Final Conditions
 
 if manual_goal == 1
-    
+
     for i = 1:n_agents
         for w = 1:n_wp
             display(['insert goal for agent ', num2str(i)]);
@@ -155,11 +159,11 @@ if manual_goal == 1
             goal(i,1,w) = tmp(1);
             goal(i,2,w) = tmp(2);
             plot(goal(i,1,w), goal(i,2,w) ,'x');
-            
+
         end
-        
+
     end
-    
+
     save('goal','goal');
 else
     load('goal');
@@ -169,7 +173,6 @@ end
 
 x_grid = xlim(1):dx:xlim(2);
 y_grid = ylim(1):dx:ylim(2);
-
 [X,Y]  = meshgrid(x_grid,y_grid);
 XX     = reshape(X,[size(X,1)*size(X,2),1]);
 YY     = reshape(Y,[size(Y,1)*size(Y,2),1]);
@@ -182,18 +185,14 @@ wpp = ones(n_agents,1);
 wp_input_vec        = zeros(2, length(time), n_agents);
 wp_path             = cell(2,1);
 index_wp_smart      = zeros(length(time), n_agents);
-
-syms r_x r_y wpx wpy RR %hx hy
+syms r_x r_y wpx wpy RR
 r     = [r_x; r_y];
 wp    = [wpx; wpy];
-U     = U_0 * exp(-(norm(r-wp))/RR); %+ 0.2 * exp(-(norm(r-ahead))/1); %+ 0.4 * exp(-(norm(r-[mean(x(kk,:));mean(y(kk,:))])/R(j)))  ;
+U     = U_0 * exp(-(norm(r-wp))/RR);
 U     = matlabFunction(U, 'File','UUfun');
-
 
 %%
 load('ETHdata1');
-
-
 obstacle1   = [obstacle];
 epsi2       = sizeA*0.35/2;
 obstacle2   = [obstacle1(:,1)-epsi2,obstacle1(:,2)-epsi2,obstacle1(:,3)+2*epsi2,obstacle1(:,4)+2*epsi2];
@@ -212,78 +211,46 @@ for kk = 1:length(time)-1
         else
             load('Wp');
         end
-        
-        %% Compute the waypoint path
-          [wp_input_vec(:,kk,j), index_prev_vec(j), wp_path{j}, index_wp_smart(kk,j),~] = generate_wp_path(Wp{j}', x(kk,j), y(kk,j), index_prev_vec(j),kk,obstacle2);
-            if kk >1
-                     R(kk,j) = R0;
-            end
-        
-    end
-    %% Dynamic obstacle
 
-    VobsD(kk,1,1)            = 0;
-    VobsD(kk,1,2)            = 0;
-    VobsD(kk,2,1)            = 0;
-    VobsD(kk,2,2)            = 0;
-    VobsD(kk,3,1)            = 0;
-    VobsD(kk,3,2)            = 0;
-    VobsD(kk,4,1)            = 0;
-    VobsD(kk,4,2)            = 0;
-        VobsD(kk,5,1)        = 0;
-    VobsD(kk,5,2)            = 0;
-    
-    x_obs_dyna(1,1)          = 15     ;
-    y_obs_dyna(1,1)          = 18     ;
-    
-        
-    
-     x_obs_dyna(1,2)          = 5    ;
-     y_obs_dyna(1,2)          = 10   ;
-     x_obs_dyna(1,3)          = 15   ;
-     y_obs_dyna(1,3)          = 17   ;
-     
-     x_obs_dyna(1,4)          = 24    ;
-     y_obs_dyna(1,4)          = 20    ;
-     x_obs_dyna(1,5)          = 25    ;
-     y_obs_dyna(1,5)          = 21    ;
-    %
+        %% Compute the waypoint path
+        [wp_input_vec(:,kk,j), index_prev_vec(j), wp_path{j}, index_wp_smart(kk,j),~] = generate_wp_path(Wp{j}', x(kk,j), y(kk,j), index_prev_vec(j),kk,obstacle2);
+        if kk >1
+            R(kk,j) = R0;
+        end
+    end
+    %% Dynamic obstacles
+for p =1 : n_obsD
+    x_obs_dyna(1,p)          = 30*rand;
+    y_obs_dyna(1,p)          = 30*rand;
+end
+
     for q = 1:n_obsD
+        VobsD(kk,q,1) = VX(kk,q)/2;
+        VobsD(kk,q,2) = VY(kk,q)/2;
         x_obs_dyna(kk+1,q) =  x_obs_dyna(kk,q) + dt*VobsD(kk,q,1);
         y_obs_dyna(kk+1,q) =  y_obs_dyna(kk,q) + dt*VobsD(kk,q,2);
     end
-    
     for jj = 1:length(x_obs)
         obstacle(jj,:)  = [x_obs(jj),y_obs(jj),obstacle_dim(jj,1),obstacle_dim(jj,2)];
     end
-    
     for qq = 1:n_obsD
         obstacleD(kk,qq,:) =  [x_obs_dyna(kk,qq),y_obs_dyna(kk,qq),sizeO,sizeO];
     end
-    
-    
     [v{kk},c{kk}] = VoronoiBounded([x(kk,:)';x_obs_dyna(kk,:)'],[y(kk,:)';y_obs_dyna(kk,:)'], bbox);
-    
-    
     
     %% Distributed Control (for now is complete disjont from the estimation)
     for j = 1:n_agents %calculate the centroid of each cell
         obstacle1 = [obstacle];
         obstacle2   = [obstacle1(:,1),obstacle1(:,2),obstacle1(:,3),obstacle1(:,4)];
         [Xvis,Yvis]  = visibilitypoints2(x(kk,:),y(kk,:),obstacle2,obstacleD(kk,:,:), VobsD(kk,:,:),1.5,xlim,ylim,Rmax,epsi2,j,sizeA*0.35,inf,theta(kk,:),b);
-        % (Xvis Yvis)
-        
         [in]       = inpolygon(Xvis,Yvis,v{kk}(c{kk}{j},1) ,v{kk}(c{kk}{j},2));
         X1         = Xvis(in);
         Y1         = Yvis(in);
         k          = boundary(X1',Y1',1);
         [in1,on]   = inpolygon(XX,YY,X1(k),Y1(k));
-        
         XX1{kk,j}  = XX(in1);
-        YY1{kk,j}  = YY(in1);
+        YY1{kk,j}  = YY(in1);  % (XX1,YY1) are the points belonging to the voronoi visible set.
         mass     = sum( UUfun(R(kk,j),XX1{kk,j},YY1{kk,j},wp_input_vec(1,kk,j),wp_input_vec(2,kk,j)) );
-        
-        
         CX          = 0;
         CY          = 0;
 
@@ -292,58 +259,43 @@ for kk = 1:length(time)-1
             CY = CY + YY1{kk,j}(p)*(UUfun(R(kk,j),XX1{kk,j}(p),YY1{kk,j}(p),wp_input_vec(1,kk,j),wp_input_vec(2,kk,j)));
         end
         cx(kk,j)   = CX/(mass);
-        cy(kk,j)   = CY/(mass);
-        
-        if kk>1
-            x_dot(kk,j)     = vel(kk-1,j) * cos(theta(kk-1,j)) ;
-            y_dot(kk,j)     = vel(kk-1,j) * sin(theta(kk-1,j)) ;
-            theta_dot(kk,j) = omega(kk-1,j);
-        end
-        %% Controller
+        cy(kk,j)   = CY/(mass);  %(cx,cy) is the centroid position
 
-        hd(:,kk,j)     = [cx(kk,j)-x(kk,j)' cy(kk,j)-y(kk,j)]/norm([cx(kk,j)-x(kk,j) cy(kk,j)-y(kk,j)]);
-        hh(:,kk,j)     = [cos(theta(kk,j)) ; sin(theta(kk,j))];
+        if nonholo_flag ==0 %nonholonomic constraints not active
+            x_dot(kk,j) = 3*(cx(kk,j)-x(kk,j));
+            y_dot(kk,j) = 3*(cy(kk,j)-y(kk,j));
+            x(kk+1,j)  = x(kk,j)     + x_dot(kk,j)*dt ;
+            y(kk+1,j)  = y(kk,j)     + y_dot(kk,j)*dt ;
+        else %active nonholonomic constraints
+            %         if kk>1
+            %             x_dot(kk,j)     = vel(kk-1,j) * cos(theta(kk-1,j)) ;
+            %             y_dot(kk,j)     = vel(kk-1,j) * sin(theta(kk-1,j)) ;
+            %             theta_dot(kk,j) = omega(kk-1,j);
+            %         end
+            %% Controller
+            hd(:,kk,j)     = [cx(kk,j)-x(kk,j)' cy(kk,j)-y(kk,j)]/norm([cx(kk,j)-x(kk,j) cy(kk,j)-y(kk,j)]);
+            hh(:,kk,j)     = [cos(theta(kk,j)) ; sin(theta(kk,j))];
 
-    end
 
-    if kk >1
-        
-        A  = neighbours(c{kk},n_agents);
-        AA = zeros(n_agents);
-        for m = 1:n_agents
-            for n = 1:n_agents
-                if A(m,n)==1 && norm([x(kk,m)-x(kk,n);y(kk,m)-y(kk,n)]) < 1.2 && dot(hh(:,kk,m),hh(:,kk,n))<cos(pi)
-                    AA(m,n) = 1;
+            if kk >1
+                [vel(kk,:),omega(kk,:)] = controller(theta(kk,:),  hd(:,kk,:), vel(kk-1,:), dt);
+            end
+            for j = 1:n_agents
+
+                if norm([x(kk,j),y(kk,j)]-[goal(j,1),goal(j,2)]) < .2
+                    omega(kk,j) = 0;
                 end
+                x_dot(kk,j)      = vel(kk,j)*cos(theta(kk,j));
+                y_dot(kk,j)      = vel(kk,j)*sin(theta(kk,j));
+                theta_dot(kk,j)  = omega(kk,j);
+                x(kk+1,j)        = x(kk,j)     + vel(kk,j) * cos(theta(kk,j)) * dt;
+                y(kk+1,j)        = y(kk,j)     + vel(kk,j) * sin(theta(kk,j)) * dt;
+                theta(kk+1,j)    = theta(kk,j) + omega(kk,j) * dt;
             end
         end
-        
-        
-        D = diag(sum(AA));
-
-        L      = D-AA;
-        [vel(kk,:),omega(kk,:)] = controller(theta(kk,:),  hd(:,kk,:), vel(kk-1,:), dt, cx(kk,:), cy(kk,:), x(kk,:), y(kk,:),theta(kk,:),omega(kk-1,:),kk,L);
-        
-  
-    end
-    for j = 1:n_agents
-   
-        if norm([x(kk,j),y(kk,j)]-[goal(j,1),goal(j,2)]) < .2
-            omega(kk,j) = 0;
-        end
-        x_dot(kk,j)      = vel(kk,j)*cos(theta(kk,j));
-        y_dot(kk,j)      = vel(kk,j)*sin(theta(kk,j));
-        theta_dot(kk,j)  = omega(kk,j);
-        x(kk+1,j)        = x(kk,j)     + vel(kk,j) * cos(theta(kk,j)) * dt;
-        y(kk+1,j)        = y(kk,j)     + vel(kk,j) * sin(theta(kk,j)) * dt;
-        theta(kk+1,j)    = theta(kk,j) + omega(kk,j) * dt;
-        %             end
     end
     h_waitbar = waitbar(kk/(length(time)-1));
-    if kk == 1060
-        disp('stop 1060')
-    end
-    
+
 end
 close(h_waitbar);
 %% Post-processing
@@ -375,18 +327,18 @@ obstacleX   = [obstacle1(:,1)-epsiX,obstacle1(:,2)-epsiX,obstacle1(:,3)+2*epsiX,
 for j = 1:length(x_obs)
     rect(j)                 = rectangle('Position',obstacleX(j,:),'FaceColor',[.8 .8 .8],'EdgeColor',[.7 .7 .7]);
 end
-for kk = 1:3:length(time)-1
-    
+for kk = 1:1:length(time)-1
 
-    
+
+
     for w = 1:n_obsD
         rectD(w,:) = human(obstacleD(kk,w,1),obstacleD(kk,w,2),VobsD(kk,w,1),VobsD(kk,w,2),sizeO);
-        
+
 
     end
     for j = [1:n_agents]
         if nonholo_flag == 0
-%             drones(j,:)    = plot_drone(x(kk,j),y(kk,j),sizeA,Rmax);
+            %drones(j,:)    = plot_drone(x(kk,j),y(kk,j),sizeA,Rmax);
         else
             plot_obj(j,:)  = plot_unicycle(x(kk,j), y(kk,j), theta(kk,j), 'k', sizeA);
         end
@@ -400,7 +352,7 @@ for kk = 1:3:length(time)-1
         wpplot(j)    = plot(wp_input_vec(1,kk,j),wp_input_vec(2,kk,j),'rx');
 
     end
-   
+
     if video_flag == 1
         drawnow
         F(kk) = getframe(gcf); %#ok<SAGROW>
