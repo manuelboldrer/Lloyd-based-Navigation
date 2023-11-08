@@ -71,9 +71,9 @@ flag_obs        = 2; %change static obstacle configutation
 video_flag      = 0; %to generate video
 nonholo_flag    = 0;
 
-manual_ics      =0 ; % initial conditions
-manual_goal     =0 ; % waypoint
-planning_flag   =0 ; % planner
+manual_ics      =1 ; % initial conditions
+manual_goal     =1 ; % waypoint
+planning_flag   =1 ; % planner
 
 %% Obstacle definition
 switch flag_obs
